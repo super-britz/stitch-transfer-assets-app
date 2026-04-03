@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #0b0b0b;
+  --color-surface: #0e0e0e;
+  --color-surface-container: #171717;
+  --color-surface-container-low: #131313;
+  --color-surface-container-high: #1f1f1f;
+  --color-surface-container-highest: #262626;
+  --color-primary: #94aaff;
+  --color-primary-dim: #3768fa;
+  --color-outline: #767575;
+  --color-outline-variant: #484847;
+  --color-on-surface: #ffffff;
+  --color-on-surface-variant: #adaaaa;
+  --font-headline: "Manrope", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --shadow-device: 0 36px 120px -38px rgba(0, 0, 0, 0.75);
+  --shadow-soft: 0 28px 64px -42px rgba(0, 0, 0, 0.85);
+}
+
+:root {
+  color: var(--color-on-surface);
+  background:
+    radial-gradient(circle at top left, rgba(148, 170, 255, 0.12), transparent 30%),
+    radial-gradient(circle at 85% 15%, rgba(55, 104, 250, 0.12), transparent 24%),
+    #0b0b0b;
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #0b0b0b;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+#root {
+  min-height: 100vh;
+}
