@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Connection,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  clusterApiUrl,
-} from '@solana/web3.js'
+  address as solAddress,
+  createSolanaRpc,
+  devnet,
+  lamports,
+  pipe,
+  createTransactionMessage,
+  setTransactionMessageFeePayer,
+  setTransactionMessageLifetimeUsingBlockhash,
+  appendTransactionMessageInstruction,
+  compileTransaction,
+  getTransactionEncoder,
+  isAddress as isSolAddress,
+  createNoopSigner,
+  type Signature,
+} from '@solana/kit'
+import { getTransferSolInstruction } from '@solana-program/system'
 import {
   ArrowLeft,
   ArrowRightLeft,
@@ -91,7 +100,8 @@ const sepoliaClient = createPublicClient({
   transport: http(),
 })
 
-const solanaConnection = new Connection(clusterApiUrl('devnet'), 'confirmed')
+const solanaRpc = createSolanaRpc(devnet('https://api.devnet.solana.com'))
+const LAMPORTS_PER_SOL = 1_000_000_000
 const sepoliaChainId = '0xaa36a7'
 
 function createStatus(tone: StatusTone, text: string): StatusState {
@@ -478,8 +488,10 @@ function App() {
       setSolanaAddress(nextAddress)
 
       if (provider.publicKey) {
-        const lamports = await solanaConnection.getBalance(provider.publicKey, 'confirmed')
-        setSolanaBalance(lamports / LAMPORTS_PER_SOL)
+        const { value: balanceLamports } = await solanaRpc
+          .getBalance(solAddress(provider.publicKey.toBase58()), { commitment: 'confirmed' })
+          .send()
+        setSolanaBalance(Number(balanceLamports) / LAMPORTS_PER_SOL)
       } else {
         setSolanaBalance(0)
       }
@@ -754,41 +766,60 @@ function App() {
         throw new Error('钱包连接成功后仍未读取到公钥。')
       }
 
-      const recipient = new PublicKey(solanaForm.to.trim())
-      const lamports = Math.round(Number(solanaForm.amount.trim()) * LAMPORTS_PER_SOL)
+      const senderAddress = solAddress(sender.toBase58())
+      const recipientAddress = solAddress(solanaForm.to.trim())
+      const transferLamports = Math.round(Number(solanaForm.amount.trim()) * LAMPORTS_PER_SOL)
 
-      if (!Number.isFinite(lamports) || lamports <= 0) {
+      if (!Number.isFinite(transferLamports) || transferLamports <= 0) {
         throw new Error('SOL 金额必须大于 0。')
       }
 
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: sender,
-          toPubkey: recipient,
-          lamports,
-        }),
+      if (!isSolAddress(solanaForm.to.trim())) {
+        throw new Error('请输入有效的 Solana 地址。')
+      }
+
+      const { value: latestBlockhash } = await solanaRpc
+        .getLatestBlockhash({ commitment: 'confirmed' })
+        .send()
+
+      const transferInstruction = getTransferSolInstruction({
+        source: createNoopSigner(senderAddress),
+        destination: recipientAddress,
+        amount: lamports(BigInt(transferLamports)),
+      })
+
+      const transactionMessage = pipe(
+        createTransactionMessage({ version: 0 }),
+        (tx) => setTransactionMessageFeePayer(senderAddress, tx),
+        (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+        (tx) => appendTransactionMessageInstruction(transferInstruction, tx),
       )
 
-      const latestBlockhash = await solanaConnection.getLatestBlockhash('confirmed')
-      transaction.recentBlockhash = latestBlockhash.blockhash
-      transaction.feePayer = sender
+      const compiledTransaction = compileTransaction(transactionMessage)
+      const transactionBytes = new Uint8Array(getTransactionEncoder().encode(compiledTransaction))
 
       setSolanaStatus(createStatus('neutral', '交易已发起，等待钱包签名并提交到 Solana Devnet...'))
 
-      const result = await provider.signAndSendTransaction(transaction)
+      const result = await provider.signAndSendTransaction(transactionBytes)
       const signature = typeof result === 'string' ? result : result.signature
 
       setSolanaSignature(signature)
       setSolanaStatus(createStatus('neutral', '交易已广播，正在等待 Devnet 确认...'))
 
-      await solanaConnection.confirmTransaction(
-        {
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-          signature,
-        },
-        'confirmed',
-      )
+      // Poll for confirmation since the wallet already sent the transaction
+      const pollConfirmation = async () => {
+        for (let i = 0; i < 60; i++) {
+          const { value: statuses } = await solanaRpc
+            .getSignatureStatuses([signature as Signature])
+            .send()
+          const status = statuses[0]
+          if (status && status.confirmationStatus === 'confirmed') return
+          if (status && status.confirmationStatus === 'finalized') return
+          await new Promise((r) => setTimeout(r, 1000))
+        }
+        throw new Error('交易确认超时。')
+      }
+      await pollConfirmation()
 
       await syncSolanaWalletState({ silent: true })
       setSolanaStatus(createStatus('success', 'SOL 转账已在 Devnet 确认，可以截图或录屏作为作业证明。'))

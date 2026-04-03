@@ -1,5 +1,3 @@
-import type { PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js'
-
 declare global {
   interface Eip1193Provider {
     isMetaMask?: boolean
@@ -20,13 +18,13 @@ declare global {
     isBackpack?: boolean
     isConnected?: boolean
     isPhantom?: boolean
-    publicKey?: PublicKey | null
-    connect(options?: { onlyIfTrusted?: boolean }): Promise<{ publicKey: PublicKey }>
+    publicKey?: { toBase58(): string } | null
+    connect(options?: { onlyIfTrusted?: boolean }): Promise<{ publicKey: { toBase58(): string } }>
     disconnect(): Promise<void>
     on?(event: string, listener: (...args: never[]) => void): void
     removeListener?(event: string, listener: (...args: never[]) => void): void
     signAndSendTransaction(
-      transaction: Transaction | VersionedTransaction,
+      transaction: Uint8Array | { serialize(): Uint8Array },
     ): Promise<{ signature: string } | string>
   }
 

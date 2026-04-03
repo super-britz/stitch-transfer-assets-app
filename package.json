@@ -10,13 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.98.4",
-    "buffer": "^6.0.3",
+    "@solana-program/system": "^0.12.0",
+    "@solana/kit": "^6.7.0",
     "lucide-react": "^1.7.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "viem": "^2.47.6",
-    "vite-plugin-node-polyfills": "^0.26.0"
+    "viem": "^2.47.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
