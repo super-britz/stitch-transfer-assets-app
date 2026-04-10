@@ -27,8 +27,9 @@ export function useEvmTransfer() {
   const [form, setForm] = useState<TransferForm>(evmInitialForm)
   const [status, setStatus] = useState(createStatus('neutral', evmInitialStatusText))
 
+  // 钱包候选列表每次渲染都重新探测，可响应扩展热插拔和多注入场景。
   const walletOptions = getInstalledEvmWalletOptions()
-  const walletLabel = getEvmWalletLabel(walletKind)
+  const walletLabel = useMemo(() => getEvmWalletLabel(walletKind), [walletKind])
   const resetTimerRef = useRef<number | null>(null)
 
   const clearResetTimer = useCallback(() => {
@@ -50,6 +51,7 @@ export function useEvmTransfer() {
 
   const syncWalletState = useCallback(
     async ({ silent = false }: { silent?: boolean } = {}) => {
+      // 流程 1: 读取 provider -> 读取账号/链 -> 拉余额 -> 统一更新 UI 状态。
       const provider = getEvmProvider(walletKind)
 
       if (!provider) {
@@ -109,6 +111,7 @@ export function useEvmTransfer() {
   )
 
   useEffect(() => {
+    // 流程 2: 通过事件 + 轮询双保险，持续同步钱包真实状态。
     const provider = getEvmProvider(walletKind)
     let active = true
 
@@ -171,6 +174,7 @@ export function useEvmTransfer() {
   }, [walletKind, walletOptions])
 
   const connectWallet = useCallback(async () => {
+    // 流程 3: 显式连接钱包并确保链切到 Sepolia。
     const provider = getEvmProvider(walletKind)
 
     if (!provider) {
@@ -202,6 +206,7 @@ export function useEvmTransfer() {
   }, [clearResetTimer, syncWalletState, walletKind, walletLabel])
 
   const sendTransfer = useCallback(async () => {
+    // 流程 4: 前置校验 -> 发起交易 -> 等待确认 -> 成功后刷新余额与表单。
     const provider = getEvmProvider(walletKind)
 
     if (!provider) {

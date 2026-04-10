@@ -53,6 +53,7 @@ export function useSolanaTransfer() {
 
   const syncWalletState = useCallback(
     async ({ silent = false }: { silent?: boolean } = {}) => {
+      // 流程 1: 读取 provider/地址 -> 拉取余额 -> 统一更新连接状态文案。
       const provider = getSolanaProvider()
 
       if (!provider) {
@@ -97,6 +98,7 @@ export function useSolanaTransfer() {
   )
 
   useEffect(() => {
+    // 流程 2: 监听钱包事件并轮询，确保切账号/切窗口后状态仍准确。
     const provider = getSolanaProvider()
 
     const runSync = (silent = false) => {
@@ -143,6 +145,7 @@ export function useSolanaTransfer() {
   }, [clearResetTimer])
 
   const connectWallet = useCallback(async () => {
+    // 流程 3: 主动触发钱包授权连接。
     const provider = getSolanaProvider()
 
     if (!provider) {
@@ -167,6 +170,7 @@ export function useSolanaTransfer() {
   }, [clearResetTimer, syncWalletState])
 
   const sendTransfer = useCallback(async () => {
+    // 流程 4: 构造交易消息 -> 钱包签名发送 -> 轮询确认 -> 刷新余额与表单。
     const provider = getSolanaProvider()
 
     if (!provider) {

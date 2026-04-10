@@ -10,6 +10,16 @@ export function useTransferPageController() {
   const evm = useEvmTransfer()
   const solana = useSolanaTransfer()
 
+  const evmPatchForm = evm.patchForm
+  const evmSyncWalletState = evm.syncWalletState
+  const evmConnectWallet = evm.connectWallet
+  const evmSendTransfer = evm.sendTransfer
+  const solanaPatchForm = solana.patchForm
+  const solanaSyncWalletState = solana.syncWalletState
+  const solanaConnectWallet = solana.connectWallet
+  const solanaSendTransfer = solana.sendTransfer
+
+  // 1) 根据当前资产选择活跃链路数据，供页面组件统一消费。
   const currentAsset = assetMap[asset]
   const currentPending = asset === 'eth' ? evm.pending : solana.pending
   const currentConnectedAccount = asset === 'eth' ? evm.account : solana.address
@@ -31,6 +41,7 @@ export function useTransferPageController() {
     isValidAmount &&
     !willOverflow
 
+  // 2) 汇总底部状态文案，避免 UI 组件里散落条件判断。
   const statusText = useMemo(() => {
     if (!currentConnectedAccount) {
       return 'Connect wallet first'
@@ -59,28 +70,29 @@ export function useTransferPageController() {
     return asset === 'eth' ? getEvmExplorerLink(currentLink) : getSolanaExplorerLink(currentLink)
   }, [asset, currentLink])
 
+  // 3) 对外暴露的交互动作：先按资产分发，再调用对应链路 Hook。
   const patchRecipient = useCallback(
     (value: string) => {
       if (asset === 'eth') {
-        evm.patchForm({ to: value })
+        evmPatchForm({ to: value })
         return
       }
 
-      solana.patchForm({ to: value })
+      solanaPatchForm({ to: value })
     },
-    [asset, evm, solana],
+    [asset, evmPatchForm, solanaPatchForm],
   )
 
   const patchAmount = useCallback(
     (value: string) => {
       if (asset === 'eth') {
-        evm.patchForm({ amount: value })
+        evmPatchForm({ amount: value })
         return
       }
 
-      solana.patchForm({ amount: value })
+      solanaPatchForm({ amount: value })
     },
-    [asset, evm, solana],
+    [asset, evmPatchForm, solanaPatchForm],
   )
 
   const handlePasteRecipient = useCallback(() => {
@@ -103,30 +115,30 @@ export function useTransferPageController() {
 
   const handleRefresh = useCallback(() => {
     if (asset === 'eth') {
-      void evm.syncWalletState()
+      void evmSyncWalletState()
       return
     }
 
-    void solana.syncWalletState()
-  }, [asset, evm, solana])
+    void solanaSyncWalletState()
+  }, [asset, evmSyncWalletState, solanaSyncWalletState])
 
   const handleConnect = useCallback(() => {
     if (asset === 'eth') {
-      void evm.connectWallet()
+      void evmConnectWallet()
       return
     }
 
-    void solana.connectWallet()
-  }, [asset, evm, solana])
+    void solanaConnectWallet()
+  }, [asset, evmConnectWallet, solanaConnectWallet])
 
   const handleSubmit = useCallback(() => {
     if (asset === 'eth') {
-      void evm.sendTransfer()
+      void evmSendTransfer()
       return
     }
 
-    void solana.sendTransfer()
-  }, [asset, evm, solana])
+    void solanaSendTransfer()
+  }, [asset, evmSendTransfer, solanaSendTransfer])
 
   return {
     asset,
